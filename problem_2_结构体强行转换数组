@@ -1,0 +1,58 @@
+/*
+这是在开发DSP与串口屏通信时解析数据格式发现的。
+通过使用结构体强行转换指令数组，而分解指令
+前提是要注意结构体的对齐方式。这个操作通常用于确保结构体在内存中的布局和文件中的布局一致，
+或者用于与外部设备或网络通信时，确保数据的字节对齐方式符合要求。
+#pragma pack 是一个预处理指令，
+用于指定结构体在内存中的对齐方式。
+#pragma pack(push) 保存当前对齐设置，
+#pragma pack(1) 设置对齐方式为 1 字节，
+#pragma pack(pop) 恢复之前保存的对齐设置。
+
+
+*/
+
+#include<stdint.h>
+#include<stdio.h>
+
+#pragma pack(push)
+#pragma pack(1)                           //按字节对齐
+
+typedef struct
+{
+    uint8_t    cmd_head;                    //帧头
+
+    uint8_t    cmd_type;                    //命令类型(UPDATE_CONTROL)    
+    uint8_t    ctrl_msg;                    //CtrlMsgType-指示消息的类型
+    uint16_t   screen_id;                   //产生消息的画面ID
+    uint16_t   control_id;                  //产生消息的控件ID
+    uint8_t    control_type;                //控件类型
+
+    uint8_t    param[256];                  //可变长度参数，最多256个字节
+
+    uint8_t  cmd_tail[4];                   //帧尾
+}CTRL_MSG,*PCTRL_MSG;
+
+#pragma pack(pop)
+#define PTR2U16(PTR) ((((uint8_t *)(PTR))[0]<<8)|((uint8_t *)(PTR))[1])  //从缓冲区取16位数据
+#define PTR2U32(PTR) ((((uint8_t *)(PTR))[0]<<24)|(((uint8_t *)(PTR))[1]<<16)|(((uint8_t *)(PTR))[2]<<8)|((uint8_t *)(PTR))[3])  //从缓冲区取32位数据
+
+uint8_t input_data[] = {0xEE, 0xB1, 0x10, 0x00, 0x01, 0x00, 0x03, 0x00, 0xFF, 0xFC, 0xFF, 0xFF};
+
+int main()
+{
+    PCTRL_MSG msg = (PCTRL_MSG)input_data;
+    uint8_t cmd_type = msg->cmd_type;                                                  //指令类型
+    uint8_t ctrl_msg = msg->ctrl_msg;                                                  //消息的类型
+    uint8_t control_type = msg->control_type;                                          //控件类型
+    uint16_t screen_id = PTR2U16(&msg->screen_id);                                     //画面ID
+    uint16_t control_id = PTR2U16(&msg->control_id);                                   //控件ID
+    uint32_t value = PTR2U32(msg->param); 
+
+    printf("%#x\n", cmd_type);    //输出B1
+    printf("%#x\n", ctrl_msg);    //输出10
+    printf("%#x\n", control_type);//输出00
+    printf("%#x\n", screen_id);    //输出01
+    printf("%#x\n", control_id);    //输出03
+    return 0;
+}
