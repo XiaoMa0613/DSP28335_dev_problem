@@ -34,7 +34,7 @@ typedef struct
 }CTRL_MSG,*PCTRL_MSG;
 
 #pragma pack(pop)
-#define PTR2U16(PTR) ((((uint8_t *)(PTR))[0]<<8)|((uint8_t *)(PTR))[1])  //从缓冲区取16位数据
+#define PTR2U16(PTR) ((((uint8_t *)(PTR))[0]<<8)|((uint8_t *)(PTR))[1])  //从缓冲区取16位数据  交换顺序，下面也一样
 #define PTR2U32(PTR) ((((uint8_t *)(PTR))[0]<<24)|(((uint8_t *)(PTR))[1]<<16)|(((uint8_t *)(PTR))[2]<<8)|((uint8_t *)(PTR))[3])  //从缓冲区取32位数据
 
 uint8_t input_data[] = {0xEE, 0xB1, 0x10, 0x00, 0x01, 0x00, 0x03, 0x00, 0xFF, 0xFC, 0xFF, 0xFF};
