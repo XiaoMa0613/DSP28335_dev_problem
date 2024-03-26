@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+// 定义帧数据结构
+typedef struct {
+    uint8_t command_type;
+    uint8_t message_type;
+    uint16_t screen_id;
+    uint16_t control_id;
+    uint8_t control_type;
+    uint8_t parameter_length;
+    uint8_t parameter[5]; // 参数最长为5个字节
+} ProtocolFrame;
+
+// 查找帧开始位置
+int find_frame_start(uint8_t *frame_buffer, size_t buffer_length) {
+    for (int i = 0; i < buffer_length; ++i) {
+        if (frame_buffer[i] == 0xEE) {
+            return i; // 返回帧开始位置的索引
+        }
+    }
+    return -1; // 没有找到帧头
+}
+
+// 解析函数
+ProtocolFrame parse_protocol_data(uint8_t *frame_buffer, size_t buffer_length, int *parsed_bytes) {
+    ProtocolFrame parsed_frame = {0}; // 初始化为0
+
+    // 查找帧开始位置
+    int start_index = find_frame_start(frame_buffer, buffer_length);
+    if (start_index == -1) {
+        *parsed_bytes = 0; // 没有找到帧头
+        return parsed_frame;
+    }
+
+    // 检查剩余的帧缓存数组是否足够解析
+    if (buffer_length - start_index < 12) {
+        *parsed_bytes = start_index; // 返回已解析的字节数
+        return parsed_frame;
+    }
+
+    // 解析数据
+    parsed_frame.command_type = frame_buffer[start_index + 1];
+    parsed_frame.message_type = frame_buffer[start_index + 2];
+    parsed_frame.screen_id = (frame_buffer[start_index + 3] << 8) | frame_buffer[start_index + 4];
+    parsed_frame.control_id = (frame_buffer[start_index + 5] << 8) | frame_buffer[start_index + 6];
+    parsed_frame.control_type = frame_buffer[start_index + 7];
+    do{
+        parsed_frame.parameter_length++;
+    }while(frame_buffer[start_index+8+parsed_frame.parameter_length] != 0XFF);//寻找参数到FF结束
+    // parsed_frame.parameter_length = frame_buffer[start_index + 8];
+
+    // 检查参数长度
+    if (buffer_length - start_index - 8 < parsed_frame.parameter_length) {
+        *parsed_bytes = start_index; // 返回已解析的字节数
+        return parsed_frame;
+    }
+
+    // 复制参数
+    memcpy(parsed_frame.parameter, &frame_buffer[start_index + 8], parsed_frame.parameter_length);
+
+    // 更新已解析的字节数
+    *parsed_bytes = start_index + 9 + parsed_frame.parameter_length;
+
+    return parsed_frame;
+}
+
+int main() {
+    uint8_t frame_buffer[] = {0x11, 0x00, 0x00, 0x00, 0x03, 0x10, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05,
+                              0xEE, 0xB1, 0x11, 0x00, 0x00, 0x00, 0x03, 0x10, 0x31, 0x30, 0x30, 0xFF, 0xFC, 0xFF, 0xFF};
+    size_t buffer_length = sizeof(frame_buffer);
+
+    // 模拟解析帧缓存数组中的所有帧
+    int parsed_bytes = 0;
+    while (parsed_bytes < buffer_length) {
+        ProtocolFrame parsed_frame = parse_protocol_data(frame_buffer + parsed_bytes, buffer_length - parsed_bytes, &parsed_bytes);
+
+        // 如果没有找到帧头或者剩余数据不足以解析帧，则跳过
+        if (parsed_bytes == 0 || parsed_bytes > buffer_length) {
+            continue;
+        }
+
+        // 打印解析结果
+        printf("解析结果：\n");
+        printf("命令类型: 0x%X\n", parsed_frame.command_type);
+        printf("消息类型: 0x%X\n", parsed_frame.message_type);
+        printf("画面ID: %d\n", parsed_frame.screen_id);
+        printf("控件ID: %d\n", parsed_frame.control_id);
+        printf("控件类型: 0x%X\n", parsed_frame.control_type);
+        printf("参数长度: %d\n", parsed_frame.parameter_length);
+        printf("参数: ");
+        for (int i = 0; i < parsed_frame.parameter_length; ++i) {
+            printf("0x%X ", parsed_frame.parameter[i]);
+        }
+        printf("\n\n");
+    }
+
+    return 0;
+}
