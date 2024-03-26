@@ -61,7 +61,7 @@ ProtocolFrame parse_protocol_data(uint8_t *frame_buffer, size_t buffer_length, i
     memcpy(parsed_frame.parameter, &frame_buffer[start_index + 8], parsed_frame.parameter_length);
 
     // 更新已解析的字节数
-    *parsed_bytes = start_index + 9 + parsed_frame.parameter_length;
+    *parsed_bytes = start_index + 8 + parsed_frame.parameter_length;
 
     return parsed_frame;
 }
